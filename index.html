@@ -3,55 +3,83 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Mobile QR Code Scanner</title>
-  <!-- Include html5-qrcode library -->
+  <title>Multi Button QR Scanner</title>
   <script src="https://unpkg.com/html5-qrcode"></script>
   <style>
-    body {
-      font-family: sans-serif;
-      text-align: center;
-      padding: 20px;
-      background: #f9f9f9;
-    }
-    #reader {
-      width: 100%;
-      max-width: 400px;
-      margin: auto;
-      border: 2px solid #ccc;
-      border-radius: 10px;
-      background: white;
-      padding: 10px;
-    }
-    #result-box {
-      margin-top: 20px;
-      font-size: 1.2em;
-      color: green;
-      word-break: break-all;
-    }
+    body { font-family: sans-serif; text-align: center; padding: 20px; background: #f9f9f9; }
+    #reader { width: 100%; max-width: 400px; margin: auto; display: none; }
+    .btn { margin: 10px; padding: 10px 20px; font-size: 1.1em; cursor: pointer; border: none; border-radius: 6px; background: #007bff; color: white; }
+    .btn:hover { background: #0056b3; }
+    #result-box { margin-top: 20px; font-size: 1.2em; color: green; word-break: break-all; }
   </style>
 </head>
 <body>
-  <h2>📷 Mobile QR Code Scanner</h2>
-  <p>Point your camera at a QR Code and it will be recognized automatically.</p>
+  <h2>📷 Multi Button QR Scanner</h2>
+  <p>Click a button to scan a QR code and upload the result.</p>
+
+  <!-- 按鈕群組 -->
+  <button class="btn" onclick="startScan('A')">Scan with Button A</button>
+  <button class="btn" onclick="startScan('B')">Scan with Button B</button>
+  <button class="btn" onclick="startScan('C')">Scan with Button C</button>
+
+  <!-- 相機區 -->
   <div id="reader"></div>
+
+  <!-- 結果顯示 -->
   <div id="result-box">Waiting for scan...</div>
 
   <script>
-    function onScanSuccess(decodedText, decodedResult) {
-      document.getElementById("result-box").innerText = "✅ Scan result: " + decodedText;
-      console.log(`Scanned result: ${decodedText}`, decodedResult);
+    let html5QrCode;
+    let activeButton = null;
+
+    function startScan(buttonId) {
+      activeButton = buttonId;
+      document.getElementById("reader").style.display = "block";
+
+      if (!html5QrCode) {
+        html5QrCode = new Html5Qrcode("reader");
+      }
+
+      html5QrCode.start(
+        { facingMode: "environment" }, // 後鏡頭
+        { fps: 10, qrbox: 250 },
+        (decodedText) => {
+          document.getElementById("result-box").innerText =
+            `✅ [Button ${activeButton}] Scan result: ${decodedText}`;
+
+          // 停止相機
+          html5QrCode.stop();
+
+          // 呼叫雲端儲存 API
+          uploadToCloud(activeButton, decodedText);
+        },
+        (errorMessage) => {
+          console.warn("Scan error:", errorMessage);
+        }
+      ).catch(err => {
+        console.error("Camera start failed:", err);
+      });
     }
 
-    function onScanFailure(error) {
-      console.warn(`Scan error: ${error}`);
+    function uploadToCloud(buttonId, qrData) {
+      // 假設有一個雲端 API endpoint
+      fetch("https://your-cloud-api.com/save-scan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          button: buttonId,
+          qr_result: qrData,
+          timestamp: new Date().toISOString()
+        })
+      })
+      .then(res => res.json())
+      .then(data => {
+        console.log("Upload success:", data);
+      })
+      .catch(err => {
+        console.error("Upload failed:", err);
+      });
     }
-
-    let html5QrcodeScanner = new Html5QrcodeScanner(
-      "reader",
-      { fps: 10, qrbox: 250, aspectRatio: 1 }
-    );
-
-    html5QrcodeScanner.render(onScanSuccess, onScanFailure);
   </script>
 </body>
 </html>
