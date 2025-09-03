@@ -10,76 +10,57 @@
     #reader { width: 100%; max-width: 400px; margin: auto; display: none; }
     .btn { margin: 10px; padding: 10px 20px; font-size: 1.1em; cursor: pointer; border: none; border-radius: 6px; background: #007bff; color: white; }
     .btn:hover { background: #0056b3; }
-    #result-box { margin-top: 20px; font-size: 1.2em; color: green; word-break: break-all; }
+    .scan-result { margin-top: 5px; font-size: 1em; color: green; word-break: break-all; }
+    #submit-btn { background: #28a745; }
+    #submit-btn:hover { background: #1e7e34; }
   </style>
 </head>
 <body>
   <h2>📷 Multi Button QR Scanner</h2>
-  <p>Click a button to scan a QR code and upload the result.</p>
+  <p>Click a button to scan a QR code and save the result.</p>
 
   <!-- 按鈕群組 -->
-  <button class="btn" onclick="startScan('A')">Scan with Button A</button>
-  <button class="btn" onclick="startScan('B')">Scan with Button B</button>
-  <button class="btn" onclick="startScan('C')">Scan with Button C</button>
+  <div id="button-container">
+    <div>
+      <button class="btn" onclick="startScan('A-B2')">A棟B2</button>
+      <div id="A-B2-result" class="scan-result">等待掃描...</div>
+    </div>
+    <div>
+      <button class="btn" onclick="startScan('B-B2')">B棟B2</button>
+      <div id="B-B2-result" class="scan-result">等待掃描...</div>
+    </div>
+    <div>
+      <button class="btn" onclick="startScan('C-B2')">C棟B2</button>
+      <div id="C-B2-result" class="scan-result">等待掃描...</div>
+    </div>
+    <div>
+      <button class="btn" onclick="startScan('D-B2')">D棟B2</button>
+      <div id="D-B2-result" class="scan-result">等待掃描...</div>
+    </div>
+    <div>
+      <button class="btn" onclick="startScan('A-9F')">A棟9F</button>
+      <div id="A-9F-result" class="scan-result">等待掃描...</div>
+    </div>
+    <div>
+      <button class="btn" onclick="startScan('B-9F')">B棟9F</button>
+      <div id="B-9F-result" class="scan-result">等待掃描...</div>
+    </div>
+    <div>
+      <button class="btn" onclick="startScan('C-9F')">C棟9F</button>
+      <div id="C-9F-result" class="scan-result">等待掃描...</div>
+    </div>
+    <div>
+      <button class="btn" onclick="startScan('D-9F')">D棟9F</button>
+      <div id="D-9F-result" class="scan-result">等待掃描...</div>
+    </div>
+  </div>
+
+  <button class="btn" id="submit-btn" onclick="submitAll()">送出</button>
 
   <!-- 相機區 -->
   <div id="reader"></div>
 
-  <!-- 結果顯示 -->
-  <div id="result-box">Waiting for scan...</div>
-
   <script>
     let html5QrCode;
     let activeButton = null;
-
-    function startScan(buttonId) {
-      activeButton = buttonId;
-      document.getElementById("reader").style.display = "block";
-
-      if (!html5QrCode) {
-        html5QrCode = new Html5Qrcode("reader");
-      }
-
-      html5QrCode.start(
-        { facingMode: "environment" }, // 後鏡頭
-        { fps: 10, qrbox: 250 },
-        (decodedText) => {
-          document.getElementById("result-box").innerText =
-            `✅ [Button ${activeButton}] Scan result: ${decodedText}`;
-
-          // 停止相機
-          html5QrCode.stop();
-
-          // 呼叫雲端儲存 API
-          uploadToCloud(activeButton, decodedText);
-        },
-        (errorMessage) => {
-          console.warn("Scan error:", errorMessage);
-        }
-      ).catch(err => {
-        console.error("Camera start failed:", err);
-      });
-    }
-
-    function uploadToCloud(buttonId, qrData) {
-      // 假設有一個雲端 API endpoint
-      fetch("https://your-cloud-api.com/save-scan", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          button: buttonId,
-          qr_result: qrData,
-          timestamp: new Date().toISOString()
-        })
-      })
-      .then(res => res.json())
-      .then(data => {
-        console.log("Upload success:", data);
-      })
-      .catch(err => {
-        console.error("Upload failed:", err);
-      });
-    }
-  </script>
-</body>
-</html>
+    l
