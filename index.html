@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mobile QR Code Scanner</title>
+  <!-- Include html5-qrcode library -->
+  <script src="https://unpkg.com/html5-qrcode"></script>
+  <style>
+    body {
+      font-family: sans-serif;
+      text-align: center;
+      padding: 20px;
+      background: #f9f9f9;
+    }
+    #reader {
+      width: 100%;
+      max-width: 400px;
+      margin: auto;
+      border: 2px solid #ccc;
+      border-radius: 10px;
+      background: white;
+      padding: 10px;
+    }
+    #result-box {
+      margin-top: 20px;
+      font-size: 1.2em;
+      color: green;
+      word-break: break-all;
+    }
+  </style>
+</head>
+<body>
+  <h2>📷 Mobile QR Code Scanner</h2>
+  <p>Point your camera at a QR Code and it will be recognized automatically.</p>
+  <div id="reader"></div>
+  <div id="result-box">Waiting for scan...</div>
+
+  <script>
+    function onScanSuccess(decodedText, decodedResult) {
+      document.getElementById("result-box").innerText = "✅ Scan result: " + decodedText;
+      console.log(`Scanned result: ${decodedText}`, decodedResult);
+    }
+
+    function onScanFailure(error) {
+      console.warn(`Scan error: ${error}`);
+    }
+
+    let html5QrcodeScanner = new Html5QrcodeScanner(
+      "reader",
+      { fps: 10, qrbox: 250, aspectRatio: 1 }
+    );
+
+    html5QrcodeScanner.render(onScanSuccess, onScanFailure);
+  </script>
+</body>
+</html>
