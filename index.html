@@ -1,117 +1,164 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Building QR Scanner</title>
+  <title>大樓打卡 QR 掃描</title>
   <script src="https://unpkg.com/html5-qrcode"></script>
   <style>
-    body { font-family: sans-serif; text-align: center; }
-    .btn-group { display: flex; flex-wrap: wrap; justify-content: center; margin: 20px 0; }
-    button { margin: 10px; padding: 15px 20px; font-size: 16px; cursor: pointer; }
-    .result { margin-top: 5px; font-size: 14px; color: green; }
-    #reader { width: 300px; margin: auto; display: none; }
-    #submit { background: blue; color: white; }
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      background: #f4f4f4;
+      padding: 20px;
+    }
+    h2 {
+      margin-bottom: 20px;
+    }
+    .button-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 15px;
+      max-width: 400px;
+      margin: auto;
+    }
+    button {
+      padding: 15px;
+      font-size: 1em;
+      border: none;
+      border-radius: 8px;
+      background: #007bff;
+      color: white;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #0056b3;
+    }
+    .result {
+      margin-top: 10px;
+      font-size: 0.9em;
+      color: green;
+      white-space: pre-line;
+    }
+    #reader {
+      width: 100%;
+      max-width: 400px;
+      margin: 20px auto;
+      display: none;
+    }
+    #submit-btn {
+      margin-top: 30px;
+      padding: 15px;
+      font-size: 1.1em;
+      background: #28a745;
+    }
   </style>
 </head>
 <body>
-  <h2>📷拍照打卡</h2>
-  <p>請選擇位置，並掃描 QR Code。</p>
+  <h2>📷 大樓打卡 QR 掃描</h2>
 
-  <div class="btn-group">
+  <div class="button-grid">
     <div>
       <button onclick="startScan('A棟B2')">A棟B2</button>
-      <div id="result-A棟B2" class="result"></div>
+      <div id="A棟B2-result" class="result"></div>
     </div>
     <div>
       <button onclick="startScan('B棟B2')">B棟B2</button>
-      <div id="result-B棟B2" class="result"></div>
+      <div id="B棟B2-result" class="result"></div>
     </div>
     <div>
       <button onclick="startScan('C棟B2')">C棟B2</button>
-      <div id="result-C棟B2" class="result"></div>
+      <div id="C棟B2-result" class="result"></div>
     </div>
     <div>
       <button onclick="startScan('D棟B2')">D棟B2</button>
-      <div id="result-D棟B2" class="result"></div>
+      <div id="D棟B2-result" class="result"></div>
     </div>
     <div>
       <button onclick="startScan('A棟9F')">A棟9F</button>
-      <div id="result-A棟9F" class="result"></div>
+      <div id="A棟9F-result" class="result"></div>
     </div>
     <div>
       <button onclick="startScan('B棟9F')">B棟9F</button>
-      <div id="result-B棟9F" class="result"></div>
+      <div id="B棟9F-result" class="result"></div>
     </div>
     <div>
       <button onclick="startScan('C棟9F')">C棟9F</button>
-      <div id="result-C棟9F" class="result"></div>
+      <div id="C棟9F-result" class="result"></div>
     </div>
     <div>
       <button onclick="startScan('D棟9F')">D棟9F</button>
-      <div id="result-D棟9F" class="result"></div>
+      <div id="D棟9F-result" class="result"></div>
     </div>
   </div>
 
-  <button id="submit" onclick="submitData()">送出</button>
+  <button id="submit-btn" onclick="submitData()">送出</button>
+
   <div id="reader"></div>
 
   <script>
-    let scans = {}; // 儲存每個位置的掃描結果
-    let currentLocation = null;
-    let html5QrCode;
+    const url = "https://script.google.com/macros/s/AKfycbySUdg-CFcN1tcKhpikMcsd-5JG5Vhn650AQWVWWLd2DzpDmiwfu1J7UgpIu4z708uu/exec";
+
+    let scanRecords = {};
+    let currentScanner = null;
 
     function startScan(location) {
-      currentLocation = location;
       document.getElementById("reader").style.display = "block";
 
-      if (html5QrCode) {
-        html5QrCode.clear();
+      if (currentScanner) {
+        currentScanner.stop().catch(() => {});
       }
-      html5QrCode = new Html5Qrcode("reader");
 
-      html5QrCode.start(
+      currentScanner = new Html5Qrcode("reader");
+      currentScanner.start(
         { facingMode: "environment" },
         { fps: 10, qrbox: 250 },
         (decodedText) => {
-          scans[location] = {
-            time: new Date().toLocaleString(),
-            qrCode: decodedText
+          const now = new Date().toLocaleString();
+          scanRecords[location] = {
+            location: location,
+            qrCode: decodedText,
+            time: now
           };
-          document.getElementById("result-" + location).innerText =
-            scans[location].time + " ✅ " + decodedText;
-          html5QrCode.stop();
-          document.getElementById("reader").style.display = "none";
+
+          document.getElementById(location + "-result").innerText =
+            `✅ ${location} 打卡成功\n時間: ${now}\nQR: ${decodedText}`;
+
+          currentScanner.stop().then(() => {
+            document.getElementById("reader").style.display = "none";
+          });
         },
         (errorMessage) => {
-          console.warn("Scan error", errorMessage);
+          console.log("掃描中…", errorMessage);
         }
-      );
+      ).catch((err) => {
+        console.error("相機啟動失敗:", err);
+      });
     }
 
-    function submitData(location, qrCode) {
-  const url = "https://script.google.com/macros/s/AKfycbySUdg-CFcN1tcKhpikMcsd-5JG5Vhn650AQWVWWLd2DzpDmiwfu1J7UgpIu4z708uu/exec";
+    function submitData() {
+      const data = Object.values(scanRecords);
 
-  fetch(url, {
-    method: "POST",
-    mode: "no-cors", // ⚠️ 加這個避免 CORS 錯誤，但無法讀取 response
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      location: location,
-      qrCode: qrCode
-    })
-  })
-  .then(() => {
-    console.log("✅ 已送出打卡資料");
-    alert("已送出打卡資料！");
-  })
-  .catch(error => {
-    console.error("❌ 送出失敗:", error);
-    alert("送出失敗：" + error);
-  });
-}
+      if (data.length === 0) {
+        alert("⚠️ 請至少完成一次打卡再送出");
+        return;
+      }
+
+      fetch(url, {
+        method: "POST",
+        body: JSON.stringify(data),
+        headers: { "Content-Type": "application/json" },
+      })
+      .then(res => res.text())
+      .then(txt => {
+        alert("✅ 已送出成功！");
+        console.log("Server response:", txt);
+      })
+      .catch(err => {
+        console.error("送出失敗:", err);
+        alert("❌ 送出失敗，請檢查網路或 Google Script");
+      });
+    }
   </script>
 </body>
 </html>
