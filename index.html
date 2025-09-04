@@ -1,162 +1,92 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>大樓打卡 QR 掃描</title>
+  <title>QR Scanner with 8 Check-ins</title>
   <script src="https://unpkg.com/html5-qrcode"></script>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      text-align: center;
-      background: #f4f4f4;
-      padding: 20px;
-    }
-    h2 {
-      margin-bottom: 20px;
-    }
-    .button-grid {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 15px;
-      max-width: 400px;
-      margin: auto;
-    }
-    button {
-      padding: 15px;
-      font-size: 1em;
-      border: none;
-      border-radius: 8px;
-      background: #007bff;
-      color: white;
-      cursor: pointer;
-    }
-    button:hover {
-      background: #0056b3;
-    }
-    .result {
-      margin-top: 10px;
-      font-size: 0.9em;
-      color: green;
-      white-space: pre-line;
-    }
-    #reader {
-      width: 100%;
-      max-width: 400px;
-      margin: 20px auto;
-      display: none;
-    }
-    #submit-btn {
-      margin-top: 30px;
-      padding: 15px;
-      font-size: 1.1em;
-      background: #28a745;
-    }
-  </style>
 </head>
 <body>
-  <h2>📷 大樓打卡 QR 掃描</h2>
+  <h1>多點打卡系統</h1>
+  <div id="reader" style="width:300px;"></div>
+  <p id="result">掃描結果會顯示在這裡</p>
 
-  <div class="button-grid">
-    <div>
-      <button onclick="startScan('A棟B2')">A棟B2</button>
-      <div id="A棟B2-result" class="result"></div>
-    </div>
-    <div>
-      <button onclick="startScan('B棟B2')">B棟B2</button>
-      <div id="B棟B2-result" class="result"></div>
-    </div>
-    <div>
-      <button onclick="startScan('C棟B2')">C棟B2</button>
-      <div id="C棟B2-result" class="result"></div>
-    </div>
-    <div>
-      <button onclick="startScan('D棟B2')">D棟B2</button>
-      <div id="D棟B2-result" class="result"></div>
-    </div>
-    <div>
-      <button onclick="startScan('A棟9F')">A棟9F</button>
-      <div id="A棟9F-result" class="result"></div>
-    </div>
-    <div>
-      <button onclick="startScan('B棟9F')">B棟9F</button>
-      <div id="B棟9F-result" class="result"></div>
-    </div>
-    <div>
-      <button onclick="startScan('C棟9F')">C棟9F</button>
-      <div id="C棟9F-result" class="result"></div>
-    </div>
-    <div>
-      <button onclick="startScan('D棟9F')">D棟9F</button>
-      <div id="D棟9F-result" class="result"></div>
-    </div>
+  <!-- 8 個打卡按鈕 -->
+  <div>
+    <button onclick="startScan(1)">打卡點 1</button>
+    <button onclick="startScan(2)">打卡點 2</button>
+    <button onclick="startScan(3)">打卡點 3</button>
+    <button onclick="startScan(4)">打卡點 4</button>
+    <button onclick="startScan(5)">打卡點 5</button>
+    <button onclick="startScan(6)">打卡點 6</button>
+    <button onclick="startScan(7)">打卡點 7</button>
+    <button onclick="startScan(8)">打卡點 8</button>
   </div>
 
-  <button id="submit-btn" onclick="submitData()">送出</button>
-
-  <div id="reader"></div>
+  <!-- 最後一次送出 -->
+  <div>
+    <button onclick="submitAll()">送出所有打卡紀錄</button>
+  </div>
 
   <script>
     const url = "https://script.google.com/macros/s/AKfycbySUdg-CFcN1tcKhpikMcsd-5JG5Vhn650AQWVWWLd2DzpDmiwfu1J7UgpIu4z708uu/exec";
+    const html5QrCode = new Html5Qrcode("reader");
 
-    let scanRecords = {};
-    let currentScanner = null;
+    // 記錄 8 個按鈕的打卡資料
+    const checkInData = {};
 
-    function startScan(location) {
-      document.getElementById("reader").style.display = "block";
-
-      if (currentScanner) {
-        currentScanner.stop().catch(() => {});
+    async function startScan(buttonId) {
+      if (html5QrCode._isScanning) {
+        await html5QrCode.stop();
       }
 
-      currentScanner = new Html5Qrcode("reader");
-      currentScanner.start(
+      html5QrCode.start(
         { facingMode: "environment" },
-        { fps: 10, qrbox: 250 },
-        (decodedText) => {
+        { fps: 10, qrbox: { width: 250, height: 250 } },
+        qrCodeMessage => {
+          document.getElementById("result").innerText = `掃描結果: ${qrCodeMessage}`;
+
+          // 記錄該按鈕的打卡資訊
           const now = new Date().toLocaleString();
-          scanRecords[location] = {
-            location: location,
-            qrCode: decodedText,
-            time: now
+          checkInData[buttonId] = {
+            time: now,
+            qrData: qrCodeMessage,
+            location: `地點 ${buttonId}` // 你可以改成真實地點
           };
 
-          document.getElementById(location + "-result").innerText =
-            `✅ ${location} 打卡成功\n時間: ${now}\nQR: ${decodedText}`;
+          alert(`打卡點 ${buttonId} 已記錄！`);
 
-          currentScanner.stop().then(() => {
-            document.getElementById("reader").style.display = "none";
-          });
+          // 停止掃描（避免錯誤）
+          html5QrCode.stop().catch(err => console.error("Stop failed: ", err));
         },
-        (errorMessage) => {
-          console.log("掃描中…", errorMessage);
+        errorMessage => {
+          console.log("QR error: ", errorMessage);
         }
-      ).catch((err) => {
-        console.error("相機啟動失敗:", err);
-      });
+      ).catch(err => console.error("Start failed: ", err));
     }
 
-    function submitData() {
-      const data = Object.values(scanRecords);
-
-      if (data.length === 0) {
-        alert("⚠️ 請至少完成一次打卡再送出");
+    function submitAll() {
+      if (Object.keys(checkInData).length === 0) {
+        alert("尚未有打卡資料！");
         return;
       }
 
+      // 將多筆資料打包成 JSON
+      const payload = JSON.stringify(checkInData);
+
       fetch(url, {
         method: "POST",
-        body: JSON.stringify(data),
         headers: { "Content-Type": "application/json" },
+        body: payload
       })
       .then(res => res.text())
-      .then(txt => {
-        alert("✅ 已送出成功！");
-        console.log("Server response:", txt);
+      .then(response => {
+        console.log("送出成功:", response);
+        alert("所有打卡資料已送出！");
       })
       .catch(err => {
         console.error("送出失敗:", err);
-        alert("❌ 送出失敗，請檢查網路或 Google Script");
+        alert("送出失敗，請稍後再試！");
       });
     }
   </script>
