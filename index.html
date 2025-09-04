@@ -89,33 +89,29 @@
       );
     }
 
-    function submitData() {
-      const url = "https://script.google.com/macros/s/AKfycbySUdg-CFcN1tcKhpikMcsd-5JG5Vhn650AQWVWWLd2DzpDmiwfu1J7UgpIu4z708uu/exec"; // 你的 Web App URL
-      const entries = Object.entries(scans);
+    function submitData(location, qrCode) {
+  const url = "https://script.google.com/macros/s/AKfycbySUdg-CFcN1tcKhpikMcsd-5JG5Vhn650AQWVWWLd2DzpDmiwfu1J7UgpIu4z708uu/exec";
 
-      if (entries.length === 0) {
-        alert("⚠️ 沒有資料可送出");
-        return;
-      }
-
-      Promise.all(entries.map(([location, data]) =>
-        fetch(url, {
-          method: "POST",
-          body: JSON.stringify({
-            location: location,
-            qrCode: data.qrCode
-          })
-        })
-      ))
-      .then(() => {
-        alert("✅ 所有資料已送出到 Google Sheet");
-        scans = {};
-      })
-      .catch(err => {
-        console.error(err);
-        alert("❌ 送出失敗");
-      });
-    }
+  fetch(url, {
+    method: "POST",
+    mode: "no-cors", // ⚠️ 加這個避免 CORS 錯誤，但無法讀取 response
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      location: location,
+      qrCode: qrCode
+    })
+  })
+  .then(() => {
+    console.log("✅ 已送出打卡資料");
+    alert("已送出打卡資料！");
+  })
+  .catch(error => {
+    console.error("❌ 送出失敗:", error);
+    alert("送出失敗：" + error);
+  });
+}
   </script>
 </body>
 </html>
