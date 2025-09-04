@@ -3,64 +3,119 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Multi Button QR Scanner</title>
+  <title>Building QR Scanner</title>
   <script src="https://unpkg.com/html5-qrcode"></script>
   <style>
-    body { font-family: sans-serif; text-align: center; padding: 20px; background: #f9f9f9; }
-    #reader { width: 100%; max-width: 400px; margin: auto; display: none; }
-    .btn { margin: 10px; padding: 10px 20px; font-size: 1.1em; cursor: pointer; border: none; border-radius: 6px; background: #007bff; color: white; }
-    .btn:hover { background: #0056b3; }
-    .scan-result { margin-top: 5px; font-size: 1em; color: green; word-break: break-all; }
-    #submit-btn { background: #28a745; }
-    #submit-btn:hover { background: #1e7e34; }
+    body { font-family: sans-serif; text-align: center; }
+    .btn-group { display: flex; flex-wrap: wrap; justify-content: center; margin: 20px 0; }
+    button { margin: 10px; padding: 15px 20px; font-size: 16px; cursor: pointer; }
+    .result { margin-top: 5px; font-size: 14px; color: green; }
+    #reader { width: 300px; margin: auto; display: none; }
+    #submit { background: blue; color: white; }
   </style>
 </head>
 <body>
-  <h2>📷 Multi Button QR Scanner</h2>
-  <p>Click a button to scan a QR code and save the result.</p>
+  <h2>📷 Building QR Scanner</h2>
+  <p>請選擇位置，並掃描 QR Code。</p>
 
-  <!-- 按鈕群組 -->
-  <div id="button-container">
+  <div class="btn-group">
     <div>
-      <button class="btn" onclick="startScan('A-B2')">A棟B2</button>
-      <div id="A-B2-result" class="scan-result">等待掃描...</div>
+      <button onclick="startScan('A棟B2')">A棟B2</button>
+      <div id="result-A棟B2" class="result"></div>
     </div>
     <div>
-      <button class="btn" onclick="startScan('B-B2')">B棟B2</button>
-      <div id="B-B2-result" class="scan-result">等待掃描...</div>
+      <button onclick="startScan('B棟B2')">B棟B2</button>
+      <div id="result-B棟B2" class="result"></div>
     </div>
     <div>
-      <button class="btn" onclick="startScan('C-B2')">C棟B2</button>
-      <div id="C-B2-result" class="scan-result">等待掃描...</div>
+      <button onclick="startScan('C棟B2')">C棟B2</button>
+      <div id="result-C棟B2" class="result"></div>
     </div>
     <div>
-      <button class="btn" onclick="startScan('D-B2')">D棟B2</button>
-      <div id="D-B2-result" class="scan-result">等待掃描...</div>
+      <button onclick="startScan('D棟B2')">D棟B2</button>
+      <div id="result-D棟B2" class="result"></div>
     </div>
     <div>
-      <button class="btn" onclick="startScan('A-9F')">A棟9F</button>
-      <div id="A-9F-result" class="scan-result">等待掃描...</div>
+      <button onclick="startScan('A棟9F')">A棟9F</button>
+      <div id="result-A棟9F" class="result"></div>
     </div>
     <div>
-      <button class="btn" onclick="startScan('B-9F')">B棟9F</button>
-      <div id="B-9F-result" class="scan-result">等待掃描...</div>
+      <button onclick="startScan('B棟9F')">B棟9F</button>
+      <div id="result-B棟9F" class="result"></div>
     </div>
     <div>
-      <button class="btn" onclick="startScan('C-9F')">C棟9F</button>
-      <div id="C-9F-result" class="scan-result">等待掃描...</div>
+      <button onclick="startScan('C棟9F')">C棟9F</button>
+      <div id="result-C棟9F" class="result"></div>
     </div>
     <div>
-      <button class="btn" onclick="startScan('D-9F')">D棟9F</button>
-      <div id="D-9F-result" class="scan-result">等待掃描...</div>
+      <button onclick="startScan('D棟9F')">D棟9F</button>
+      <div id="result-D棟9F" class="result"></div>
     </div>
   </div>
 
-  <button class="btn" id="submit-btn" onclick="submitAll()">送出</button>
-
-  <!-- 相機區 -->
+  <button id="submit" onclick="submitData()">送出</button>
   <div id="reader"></div>
 
   <script>
+    let scans = {}; // 儲存每個位置的掃描結果
+    let currentLocation = null;
     let html5QrCode;
-    let activeButton = null;
-    l
+
+    function startScan(location) {
+      currentLocation = location;
+      document.getElementById("reader").style.display = "block";
+
+      if (html5QrCode) {
+        html5QrCode.clear();
+      }
+      html5QrCode = new Html5Qrcode("reader");
+
+      html5QrCode.start(
+        { facingMode: "environment" },
+        { fps: 10, qrbox: 250 },
+        (decodedText) => {
+          scans[location] = {
+            time: new Date().toLocaleString(),
+            qrCode: decodedText
+          };
+          document.getElementById("result-" + location).innerText =
+            scans[location].time + " ✅ " + decodedText;
+          html5QrCode.stop();
+          document.getElementById("reader").style.display = "none";
+        },
+        (errorMessage) => {
+          console.warn("Scan error", errorMessage);
+        }
+      );
+    }
+
+    function submitData() {
+      const url = "https://script.google.com/macros/s/AKfycbyKgHJKNN4Fkj0yfcOqiyuqKyrOm61g_IsXBKdwXsa_Kk0RAYoDFVjRVmpACxpV0RCY/exec"; // 你的 Web App URL
+      const entries = Object.entries(scans);
+
+      if (entries.length === 0) {
+        alert("⚠️ 沒有資料可送出");
+        return;
+      }
+
+      Promise.all(entries.map(([location, data]) =>
+        fetch(url, {
+          method: "POST",
+          body: JSON.stringify({
+            location: location,
+            qrCode: data.qrCode
+          })
+        })
+      ))
+      .then(() => {
+        alert("✅ 所有資料已送出到 Google Sheet");
+        scans = {};
+      })
+      .catch(err => {
+        console.error(err);
+        alert("❌ 送出失敗");
+      });
+    }
+  </script>
+</body>
+</html>
