@@ -1,66 +1,37 @@
-<script>
-  const url = "https://script.google.com/macros/s/AKfycbySUdg-CFcN1tcKhpikMcsd-5JG5Vhn650AQWVWWLd2DzpDmiwfu1J7UgpIu4z708uu/exec";
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <title>QR Code 打卡系統_01</title>
+  <script src="https://unpkg.com/html5-qrcode"></script>
+  <style>
+    body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
+    button { margin: 8px; padding: 10px 18px; font-size: 16px; }
+    #reader { width: 320px; margin: 20px auto; }
+    .record { margin: 6px; font-size: 14px; color: #333; }
+    #upload-status { margin-top: 20px; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <h2>大樓 QR Code 打卡系統</h2>
 
-  let records = {
-    "A棟B2": null,
-    "A棟9F": null,
-    "B棟B2": null,
-    "B棟9F": null
-  };
+  <!-- 按鍵 -->
+  <div>
+    <button onclick="startScan('A棟B2')">A棟B2</button>
+    <div id="A棟B2-record" class="record">尚未打卡</div>
 
-  let html5QrCode = null;
-  let isScanning = false;
+    <button onclick="startScan('A棟9F')">A棟9F</button>
+    <div id="A棟9F-record" class="record">尚未打卡</div>
 
-  async function startScan(location) {
-    // 如果有舊的 scanner 且正在掃描 → 停止
-    if (html5QrCode && isScanning) {
-      await html5QrCode.stop().catch(() => {});
-      isScanning = false;
-    }
+    <button onclick="startScan('B棟B2')">B棟B2</button>
+    <div id="B棟B2-record" class="record">尚未打卡</div>
 
-    html5QrCode = new Html5Qrcode("reader");
+    <button onclick="startScan('B棟9F')">B棟9F</button>
+    <div id="B棟9F-record" class="record">尚未打卡</div>
+  </div>
 
-    html5QrCode.start(
-      { facingMode: "environment" },
-      { fps: 10, qrbox: 250 },
-      qrCodeMessage => {
-        const now = new Date().toLocaleString();
-        records[location] = { location, qrCode: qrCodeMessage, time: now };
-        document.getElementById(location + "-record").innerText = now + " - " + qrCodeMessage;
+  <!-- 掃描區 -->
+  <div id="reader"></div>
 
-        // 停止掃描前要檢查狀態
-        if (isScanning) {
-          html5QrCode.stop().catch(() => {});
-          isScanning = false;
-        }
-      },
-      errorMessage => { console.log("Scanning..."); }
-    ).then(() => {
-      isScanning = true;
-    }).catch(err => console.error("Camera start error:", err));
-  }
-
-  async function submitAll() {
-    const data = Object.values(records).filter(r => r !== null);
-
-    if (data.length === 0) {
-      document.getElementById("upload-status").innerText = "⚠️ 沒有資料可上傳";
-      return;
-    }
-
-    try {
-      const response = await fetch(url, {
-        method: "POST",
-        mode: "cors",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data)
-      });
-
-      const result = await response.json();
-      document.getElementById("upload-status").innerText = "✅ 上傳成功：" + result.message;
-    } catch (error) {
-      console.error("上傳失敗:", error);
-      document.getElementById("upload-status").innerText = "❌ 上傳失敗";
-    }
-  }
-</script>
+  <!-- 上傳按鍵 -->
+  <button onclick="submitAll()">上傳資料</butto
