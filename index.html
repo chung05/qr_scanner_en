@@ -2,112 +2,108 @@
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8">
-  <title>QR Code 打卡系統01</title>
+  <title>大樓打卡系統</title>
   <script src="https://unpkg.com/html5-qrcode"></script>
   <style>
-    body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
-    button { margin: 8px; padding: 10px 18px; font-size: 16px; }
-    #reader { width: 320px; margin: 20px auto; }
-    .record { margin: 6px; font-size: 14px; color: #333; }
-    #upload-status { margin-top: 20px; font-weight: bold; }
+    body { font-family: Arial, sans-serif; text-align: center; }
+    .btn-container { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin: 20px; }
+    button { padding: 10px; font-size: 16px; border-radius: 8px; cursor: pointer; }
+    .record { margin-top: 8px; font-size: 14px; color: #333; }
+    #reader { width: 300px; margin: auto; display: none; }
+    #status { margin-top: 15px; font-weight: bold; }
   </style>
 </head>
 <body>
-  <h2>大樓 QR Code 打卡系統</h2>
-
-  <!-- 按鍵 -->
-  <div>
-    <button onclick="startScan('A棟B2')">A棟B2</button>
-    <div id="A棟B2-record" class="record">尚未打卡</div>
-
-    <button onclick="startScan('A棟9F')">A棟9F</button>
-    <div id="A棟9F-record" class="record">尚未打卡</div>
-
-    <button onclick="startScan('B棟B2')">B棟B2</button>
-    <div id="B棟B2-record" class="record">尚未打卡</div>
-
-    <button onclick="startScan('B棟9F')">B棟9F</button>
-    <div id="B棟9F-record" class="record">尚未打卡</div>
-  </div>
-
-  <!-- 掃描區 -->
+  <h2>大樓打卡系統</h2>
   <div id="reader"></div>
 
-  <!-- 上傳按鍵 -->
-  <button onclick="submitAll()">上傳資料</button>
-  <div id="upload-status"></div>
+  <div class="btn-container">
+    <div>
+      <button onclick="startScan('A棟B2')">A棟B2</button>
+      <div id="record-A棟B2" class="record"></div>
+    </div>
+    <div>
+      <button onclick="startScan('A棟9F')">A棟9F</button>
+      <div id="record-A棟9F" class="record"></div>
+    </div>
+    <div>
+      <button onclick="startScan('B棟B2')">B棟B2</button>
+      <div id="record-B棟B2" class="record"></div>
+    </div>
+    <div>
+      <button onclick="startScan('B棟9F')">B棟9F</button>
+      <div id="record-B棟9F" class="record"></div>
+    </div>
+  </div>
+
+  <button onclick="submitAll()">📤 上傳資料</button>
+  <p id="status"></p>
 
   <script>
     const url = "https://script.google.com/macros/s/AKfycbySUdg-CFcN1tcKhpikMcsd-5JG5Vhn650AQWVWWLd2DzpDmiwfu1J7UgpIu4z708uu/exec";
 
-    let records = {
-      "A棟B2": null,
-      "A棟9F": null,
-      "B棟B2": null,
-      "B棟9F": null
-    };
+    let records = {};  // 暫存各按鍵的打卡紀錄
+    let html5QrCode;
+    const qrRegionId = "reader";
 
-    let html5QrCode = null;
-
-    async function startScan(location) {
+    // 開始掃描
+    function startScan(location) {
       if (html5QrCode) {
-        try {
-          const state = html5QrCode.getState(); // 0=STOPPED, 1=STARTING, 2=RUNNING, 3=STOPPING
-          if (state === 2) { 
-            await html5QrCode.stop();
-          }
-        } catch (err) {
-          console.warn("stop 時發生錯誤(可忽略):", err);
-        }
+        html5QrCode.stop().catch(() => {});
       }
+      document.getElementById("reader").style.display = "block";
 
-      html5QrCode = new Html5Qrcode("reader");
-
+      html5QrCode = new Html5Qrcode(qrRegionId);
       html5QrCode.start(
         { facingMode: "environment" },
         { fps: 10, qrbox: 250 },
-        qrCodeMessage => {
+        (decodedText) => {
           const now = new Date().toLocaleString();
-          records[location] = { location, qrCode: qrCodeMessage, time: now };
-          document.getElementById(location + "-record").innerText = now + " - " + qrCodeMessage;
+          records[location] = { location, qrCode: decodedText, time: now };
 
-          try {
-            const state = html5QrCode.getState();
-            if (state === 2) {
-              html5QrCode.stop();
-            }
-          } catch (err) {
-            console.warn("掃描完成後停止失敗(可忽略):", err);
-          }
-        },
-        errorMessage => {
-          console.log("Scanning...");
+          document.getElementById("record-" + location).innerText =
+            `${now} - ${decodedText}`;
+
+          stopScan(); // 掃描一次就停止
         }
-      ).catch(err => console.error("Camera start error:", err));
+      ).catch(err => console.error("Scan error:", err));
     }
 
-    async function submitAll() {
-      const data = Object.values(records).filter(r => r !== null);
+    // 停止掃描
+    function stopScan() {
+      if (html5QrCode) {
+        html5QrCode.stop().then(() => {
+          document.getElementById("reader").style.display = "none";
+        }).catch(err => console.warn("Stop failed:", err));
+      }
+    }
 
-      if (data.length === 0) {
-        document.getElementById("upload-status").innerText = "⚠️ 沒有資料可上傳";
+    // 上傳資料
+    function submitAll() {
+      const dataToSend = Object.values(records);
+      if (dataToSend.length === 0) {
+        document.getElementById("status").innerText = "⚠️ 沒有任何打卡紀錄";
         return;
       }
 
-      try {
-        const response = await fetch(url, {
-          method: "POST",
-          mode: "cors",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(data)
-        });
-
-        const result = await response.json();
-        document.getElementById("upload-status").innerText = "✅ 上傳成功：" + result.message;
-      } catch (error) {
-        console.error("上傳失敗:", error);
-        document.getElementById("upload-status").innerText = "❌ 上傳失敗";
-      }
+      fetch(url, {
+        method: "POST",
+        body: JSON.stringify({ records: dataToSend }),
+        headers: { "Content-Type": "application/json" }
+      })
+      .then(res => res.json())
+      .then(result => {
+        if (result.status === "success") {
+          document.getElementById("status").innerText = "✅ 上傳成功";
+          records = {}; // 清空暫存
+        } else {
+          document.getElementById("status").innerText = "❌ 上傳失敗：" + result.message;
+        }
+      })
+      .catch(err => {
+        console.error("上傳錯誤:", err);
+        document.getElementById("status").innerText = "❌ 網路或伺服器錯誤";
+      });
     }
   </script>
 </body>
