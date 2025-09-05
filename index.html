@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8">
-  <title>QR Code 打卡系統1811</title>
+  <title>QR Code 打卡系統1841</title>
   <script src="https://unpkg.com/html5-qrcode"></script>
   <style>
     body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
@@ -27,14 +27,17 @@
     <div id="record-B棟9F" class="record"></div>
   </div>
 
-  <button onclick="submitAll()">上傳資料</button>
-
   <div id="reader" style="width:300px; margin:auto; display:none;"></div>
 
+  <!-- 隱藏表單提交 -->
+  <form id="qrForm" method="POST" action="https://script.google.com/macros/s/你的ID/exec" target="hidden_iframe">
+    <input type="hidden" name="location" id="location">
+    <input type="hidden" name="qrCode" id="qrCode">
+  </form>
+  <iframe name="hidden_iframe" style="display:none;"></iframe>
+
   <script>
-    const url = "https://script.google.com/macros/s/AKfycbyi8XcNscGpsqoJtMJUZ7k0qYCxMm1QgOcN3KZFD2bJHhZ_uap6VG6mN81F-Bu6bL9_/exec";
     const qrScanner = new Html5Qrcode("reader");
-    let records = {};
 
     async function startScan(location) {
       document.getElementById("reader").style.display = "block";
@@ -45,10 +48,11 @@
           { fps: 10, qrbox: 250 },
           (decodedText) => {
             const now = new Date().toLocaleString();
-            records[location] = { location, qrCode: decodedText, time: now };
-
             document.getElementById("record-" + location).innerText =
               `${now} - ${decodedText}`;
+
+            // 提交到 Apps Script Web App
+            submitRecord(location, decodedText);
 
             stopScan();
           }
@@ -67,32 +71,10 @@
       }
     }
 
-    async function submitAll() {
-      const dataToSend = Object.values(records);
-      if (dataToSend.length === 0) {
-        alert("尚未有任何打卡資料");
-        return;
-      }
-
-      try {
-        const res = await fetch(url, {
-          method: "POST",
-          body: JSON.stringify({ records: dataToSend }),
-          headers: { "Content-Type": "application/json" }
-        });
-
-        const result = await res.json();
-        if (result.status === "success") {
-          alert("資料已成功上傳！");
-          records = {}; // 清空暫存
-          document.querySelectorAll(".record").forEach(el => el.innerText = "");
-        } else {
-          alert("上傳失敗: " + result.message);
-        }
-      } catch (err) {
-        console.error("上傳錯誤:", err);
-        alert("上傳失敗，請檢查網路或 Apps Script 設定。");
-      }
+    function submitRecord(location, qrCode) {
+      document.getElementById("location").value = location;
+      document.getElementById("qrCode").value = qrCode;
+      document.getElementById("qrForm").submit();
     }
   </script>
 </body>
