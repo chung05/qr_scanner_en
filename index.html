@@ -1,94 +1,66 @@
-<!DOCTYPE html>
-<html lang="zh">
-<head>
-  <meta charset="UTF-8">
-  <title>多點打卡 QR Scanner</title>
-  <script src="https://unpkg.com/html5-qrcode"></script>
-  <style>
-    body { font-family: sans-serif; text-align: center; }
-    button { margin: 10px; padding: 10px 20px; font-size: 16px; }
-    .record { margin: 10px 0; color: green; }
-  </style>
-</head>
-<body>
-  <h2>多點打卡 QR Scanner</h2>
+<script>
+  const url = "https://script.google.com/macros/s/AKfycbySUdg-CFcN1tcKhpikMcsd-5JG5Vhn650AQWVWWLd2DzpDmiwfu1J7UgpIu4z708uu/exec";
 
-  <div>
-    <button onclick="startScan('A棟B2')">A棟B2</button>
-    <div id="A棟B2-record" class="record"></div>
+  let records = {
+    "A棟B2": null,
+    "A棟9F": null,
+    "B棟B2": null,
+    "B棟9F": null
+  };
 
-    <button onclick="startScan('A棟9F')">A棟9F</button>
-    <div id="A棟9F-record" class="record"></div>
-  </div>
+  let html5QrCode = null;
+  let isScanning = false;
 
-  <div>
-    <button onclick="startScan('B棟B2')">B棟B2</button>
-    <div id="B棟B2-record" class="record"></div>
+  async function startScan(location) {
+    // 如果有舊的 scanner 且正在掃描 → 停止
+    if (html5QrCode && isScanning) {
+      await html5QrCode.stop().catch(() => {});
+      isScanning = false;
+    }
 
-    <button onclick="startScan('B棟9F')">B棟9F</button>
-    <div id="B棟9F-record" class="record"></div>
-  </div>
+    html5QrCode = new Html5Qrcode("reader");
 
-  <button onclick="submitAll()">上傳資料</button>
-  <div id="upload-status"></div>
+    html5QrCode.start(
+      { facingMode: "environment" },
+      { fps: 10, qrbox: 250 },
+      qrCodeMessage => {
+        const now = new Date().toLocaleString();
+        records[location] = { location, qrCode: qrCodeMessage, time: now };
+        document.getElementById(location + "-record").innerText = now + " - " + qrCodeMessage;
 
-  <div id="reader" style="width:300px; margin:auto;"></div>
-
-  <script>
-    const url = "https://script.google.com/macros/s/AKfycbySUdg-CFcN1tcKhpikMcsd-5JG5Vhn650AQWVWWLd2DzpDmiwfu1J7UgpIu4z708uu/exec";
-
-    let records = {
-      "A棟B2": null,
-      "A棟9F": null,
-      "B棟B2": null,
-      "B棟9F": null
-    };
-
-    let html5QrCode;
-
-    async function startScan(location) {
-      if (html5QrCode) {
-        await html5QrCode.stop().catch(() => {});
-      }
-
-      html5QrCode = new Html5Qrcode("reader");
-
-      html5QrCode.start(
-        { facingMode: "environment" },
-        { fps: 10, qrbox: 250 },
-        qrCodeMessage => {
-          const now = new Date().toLocaleString();
-          records[location] = { location, qrCode: qrCodeMessage, time: now };
-          document.getElementById(location + "-record").innerText = now + " - " + qrCodeMessage;
+        // 停止掃描前要檢查狀態
+        if (isScanning) {
           html5QrCode.stop().catch(() => {});
-        },
-        errorMessage => { console.log("Scanning..."); }
-      ).catch(err => console.error("Camera start error:", err));
+          isScanning = false;
+        }
+      },
+      errorMessage => { console.log("Scanning..."); }
+    ).then(() => {
+      isScanning = true;
+    }).catch(err => console.error("Camera start error:", err));
+  }
+
+  async function submitAll() {
+    const data = Object.values(records).filter(r => r !== null);
+
+    if (data.length === 0) {
+      document.getElementById("upload-status").innerText = "⚠️ 沒有資料可上傳";
+      return;
     }
 
-    async function submitAll() {
-      const data = Object.values(records).filter(r => r !== null);
+    try {
+      const response = await fetch(url, {
+        method: "POST",
+        mode: "cors",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data)
+      });
 
-      if (data.length === 0) {
-        document.getElementById("upload-status").innerText = "⚠️ 沒有資料可上傳";
-        return;
-      }
-
-      try {
-        const response = await fetch(url, {
-          method: "POST",
-          mode: "cors",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(data)
-        });
-
-        const result = await response.json();
-        document.getElementById("upload-status").innerText = "✅ 上傳成功：" + result.message;
-      } catch (error) {
-        console.error("上傳失敗:", error);
-        document.getElementById("upload-status").innerText = "❌ 上傳失敗";
-      }
+      const result = await response.json();
+      document.getElementById("upload-status").innerText = "✅ 上傳成功：" + result.message;
+    } catch (error) {
+      console.error("上傳失敗:", error);
+      document.getElementById("upload-status").innerText = "❌ 上傳失敗";
     }
-  </script>
-</body>
-</html>
+  }
+</script>
