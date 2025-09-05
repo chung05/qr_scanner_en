@@ -2,91 +2,96 @@
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8">
-  <title>QR Code 打卡系統1806</title>
+  <title>QR Code 打卡系統1811</title>
   <script src="https://unpkg.com/html5-qrcode"></script>
   <style>
     body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
-    button { margin: 5px; padding: 10px 20px; font-size: 16px; }
-    #result { margin-top: 20px; color: green; }
-    #error { margin-top: 20px; color: red; }
+    button { margin: 10px; padding: 10px 20px; font-size: 16px; }
+    .record { margin: 5px; font-size: 14px; color: green; }
   </style>
 </head>
 <body>
   <h2>QR Code 打卡系統</h2>
-  
-  <!-- 八個打卡按鈕 -->
+
   <div>
-    <button onclick="startScan(1)">打卡 1</button>
-    <button onclick="startScan(2)">打卡 2</button>
-    <button onclick="startScan(3)">打卡 3</button>
-    <button onclick="startScan(4)">打卡 4</button>
-    <button onclick="startScan(5)">打卡 5</button>
-    <button onclick="startScan(6)">打卡 6</button>
-    <button onclick="startScan(7)">打卡 7</button>
-    <button onclick="startScan(8)">打卡 8</button>
-  </div>
-  
-  <!-- 送出按鈕 -->
-  <div>
-    <button onclick="submitAll()">送出所有紀錄</button>
+    <button onclick="startScan('A棟B2')">A棟B2</button>
+    <div id="record-A棟B2" class="record"></div>
+
+    <button onclick="startScan('A棟9F')">A棟9F</button>
+    <div id="record-A棟9F" class="record"></div>
+
+    <button onclick="startScan('B棟B2')">B棟B2</button>
+    <div id="record-B棟B2" class="record"></div>
+
+    <button onclick="startScan('B棟9F')">B棟9F</button>
+    <div id="record-B棟9F" class="record"></div>
   </div>
 
-  <div id="reader" style="width:300px; margin:20px auto;"></div>
-  <div id="result"></div>
-  <div id="error"></div>
+  <button onclick="submitAll()">上傳資料</button>
+
+  <div id="reader" style="width:300px; margin:auto; display:none;"></div>
 
   <script>
-    const url = "https://script.google.com/macros/s/AKfycbyi8XcNscGpsqoJtMJUZ7k0qYCxMm1QgOcN3KZFD2bJHhZ_uap6VG6mN81F-Bu6bL9_/exec"; 
-    let records = [];
-    let html5QrcodeScanner;
+    const url = "https://script.google.com/macros/s/AKfycbyi8XcNscGpsqoJtMJUZ7k0qYCxMm1QgOcN3KZFD2bJHhZ_uap6VG6mN81F-Bu6bL9_/exec";
+    const qrScanner = new Html5Qrcode("reader");
+    let records = {};
 
-    // 開始掃描
-    function startScan(slot) {
-      document.getElementById("result").innerText = "正在掃描 QR Code...";
-      document.getElementById("error").innerText = "";
+    async function startScan(location) {
+      document.getElementById("reader").style.display = "block";
 
-      if (html5QrcodeScanner) {
-        html5QrcodeScanner.clear().catch(() => {});
+      try {
+        await qrScanner.start(
+          { facingMode: "environment" },
+          { fps: 10, qrbox: 250 },
+          (decodedText) => {
+            const now = new Date().toLocaleString();
+            records[location] = { location, qrCode: decodedText, time: now };
+
+            document.getElementById("record-" + location).innerText =
+              `${now} - ${decodedText}`;
+
+            stopScan();
+          }
+        );
+      } catch (err) {
+        console.error("啟動掃描錯誤:", err);
       }
-
-      html5QrcodeScanner = new Html5Qrcode("reader");
-      html5QrcodeScanner.start(
-        { facingMode: "environment" },
-        { fps: 10, qrbox: 250 },
-        (decodedText) => {
-          records.push(`打卡${slot}: ${decodedText}`);
-          document.getElementById("result").innerText = `打卡${slot} 成功: ${decodedText}`;
-          html5QrcodeScanner.stop().catch(() => {});
-        },
-        (err) => { console.warn("掃描錯誤:", err); }
-      ).catch((err) => {
-        document.getElementById("error").innerText = "啟動掃描失敗: " + err;
-      });
     }
 
-    // 送出所有紀錄
+    async function stopScan() {
+      try {
+        await qrScanner.stop();
+        document.getElementById("reader").style.display = "none";
+      } catch (err) {
+        console.error("停止掃描錯誤:", err);
+      }
+    }
+
     async function submitAll() {
-      if (records.length === 0) {
-        document.getElementById("error").innerText = "沒有任何打卡紀錄！";
+      const dataToSend = Object.values(records);
+      if (dataToSend.length === 0) {
+        alert("尚未有任何打卡資料");
         return;
       }
 
       try {
-        const response = await fetch(url, {
+        const res = await fetch(url, {
           method: "POST",
-          body: JSON.stringify({ records: records }),
+          body: JSON.stringify({ records: dataToSend }),
           headers: { "Content-Type": "application/json" }
         });
 
-        const result = await response.json();
+        const result = await res.json();
         if (result.status === "success") {
-          document.getElementById("result").innerText = `成功送出 ${result.count} 筆紀錄`;
-          records = []; // 清空暫存
+          alert("資料已成功上傳！");
+          records = {}; // 清空暫存
+          document.querySelectorAll(".record").forEach(el => el.innerText = "");
         } else {
-          document.getElementById("error").innerText = "送出失敗: " + result.message;
+          alert("上傳失敗: " + result.message);
         }
       } catch (err) {
-        document.getElementById("error").innerText = "上傳錯誤: " + err.message;
+        console.error("上傳錯誤:", err);
+        alert("上傳失敗，請檢查網路或 Apps Script 設定。");
       }
     }
   </script>
