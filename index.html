@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8">
-  <title>QR Code 打卡系統1936</title>
+  <title>QR Code 打卡系統_1941</title>
   <script src="https://unpkg.com/html5-qrcode"></script>
   <style>
     body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
@@ -31,12 +31,16 @@
 
   <div id="reader" style="width:300px; margin:auto; display:none;"></div>
 
-  <div id="uploadStatus" style="margin-top:10px; font-weight:bold;"></div>
+  <!-- 隱藏表單提交 -->
+  <form id="qrForm" method="POST" action="https://script.google.com/macros/s/AKfycbyi8XcNscGpsqoJtMJUZ7k0qYCxMm1QgOcN3KZFD2bJHhZ_uap6VG6mN81F-Bu6bL9_/exec" target="hidden_iframe">
+    <input type="hidden" name="records" id="records">
+  </form>
+  <iframe name="hidden_iframe" style="display:none;"></iframe>
 
   <script>
     const qrScanner = new Html5Qrcode("reader");
     const locations = ['A棟B2','A棟9F','B棟B2','B棟9F'];
-    let records = {}; // 暫存每個位置的最新掃描紀錄
+    let records = {}; // 暫存每個位置最新紀錄
 
     async function startScan(location) {
       document.getElementById("reader").style.display = "block";
@@ -46,10 +50,12 @@
           { facingMode: "environment" },
           { fps: 10, qrbox: 250 },
           (decodedText) => {
-            const now = new Date().toISOString(); // ISO 格式時間
+            const now = new Date().toISOString(); // 儲存 ISO 格式時間
 
+            // 更新暫存
             records[location] = { location, qrCode: decodedText, time: now };
 
+            // 更新畫面
             document.getElementById("record-" + location).innerText =
               `${new Date(now).toLocaleString()} - ${decodedText}`;
 
@@ -70,40 +76,26 @@
       }
     }
 
-    async function submitAll() {
+    function submitAll() {
       const dataToSend = Object.values(records);
-      const statusDiv = document.getElementById("uploadStatus");
-
       if (dataToSend.length === 0) {
         alert("尚未有任何打卡資料");
         return;
       }
 
-      statusDiv.innerText = "資料上傳中...";
+      // 將暫存資料轉成 JSON 放入隱藏表單
+      document.getElementById("records").value = JSON.stringify({ records: dataToSend });
 
-      try {
-        const response = await fetch("https://script.google.com/macros/s/AKfycbyi8XcNscGpsqoJtMJUZ7k0qYCxMm1QgOcN3KZFD2bJHhZ_uap6VG6mN81F-Bu6bL9_/exec", {
-          method: "POST",
-          headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          body: "records=" + encodeURIComponent(JSON.stringify({ records: dataToSend }))
-        });
+      // 提交表單
+      document.getElementById("qrForm").submit();
 
-        const result = await response.json();
+      // 清空暫存與前端顯示
+      records = {};
+      locations.forEach(loc => {
+        document.getElementById("record-" + loc).innerText = "尚未打卡";
+      });
 
-        if (result.status === "success") {
-          statusDiv.innerText = "✅ 資料已成功寫入 Google Sheet！";
-          // 清空暫存與前端顯示
-          records = {};
-          locations.forEach(loc => {
-            document.getElementById("record-" + loc).innerText = "尚未打卡";
-          });
-        } else {
-          statusDiv.innerText = "❌ 上傳失敗：" + result.message;
-        }
-
-      } catch (err) {
-        statusDiv.innerText = "❌ 上傳發生錯誤：" + err.toString();
-      }
+      alert("資料已送出！");
     }
   </script>
 </body>
