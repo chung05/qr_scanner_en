@@ -1,92 +1,97 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-TW">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>QR Scanner with 8 Check-ins</title>
+  <title>大樓打卡系統</title>
   <script src="https://unpkg.com/html5-qrcode"></script>
+  <style>
+    body { font-family: Arial, sans-serif; text-align: center; }
+    .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin: 20px; }
+    .card { padding: 15px; border: 2px solid #007bff; border-radius: 10px; }
+    button { padding: 10px 20px; font-size: 16px; }
+    .log { margin-top: 10px; font-size: 14px; color: #333; }
+  </style>
 </head>
 <body>
-  <h1>多點打卡系統</h1>
-  <div id="reader" style="width:300px;"></div>
-  <p id="result">掃描結果會顯示在這裡</p>
+  <h1>大樓 QR Code 打卡系統</h1>
 
-  <!-- 8 個打卡按鈕 -->
-  <div>
-    <button onclick="startScan(1)">打卡點 1</button>
-    <button onclick="startScan(2)">打卡點 2</button>
-    <button onclick="startScan(3)">打卡點 3</button>
-    <button onclick="startScan(4)">打卡點 4</button>
-    <button onclick="startScan(5)">打卡點 5</button>
-    <button onclick="startScan(6)">打卡點 6</button>
-    <button onclick="startScan(7)">打卡點 7</button>
-    <button onclick="startScan(8)">打卡點 8</button>
+  <!-- QR Code 掃描區 -->
+  <div id="reader" style="width:300px; margin:auto;"></div>
+
+  <!-- 四個地點按鈕 -->
+  <div class="grid">
+    <div class="card">
+      <button onclick="startScan('A棟B2')">A棟B2</button>
+      <div id="log-A棟B2" class="log">尚未打卡</div>
+    </div>
+    <div class="card">
+      <button onclick="startScan('A棟9F')">A棟9F</button>
+      <div id="log-A棟9F" class="log">尚未打卡</div>
+    </div>
+    <div class="card">
+      <button onclick="startScan('B棟B2')">B棟B2</button>
+      <div id="log-B棟B2" class="log">尚未打卡</div>
+    </div>
+    <div class="card">
+      <button onclick="startScan('B棟9F')">B棟9F</button>
+      <div id="log-B棟9F" class="log">尚未打卡</div>
+    </div>
   </div>
 
-  <!-- 最後一次送出 -->
+  <!-- 上傳按鈕 -->
   <div>
-    <button onclick="submitAll()">送出所有打卡紀錄</button>
+    <button onclick="submitAll()" style="background:green; color:white;">上傳資料</button>
   </div>
 
   <script>
     const url = "https://script.google.com/macros/s/AKfycbySUdg-CFcN1tcKhpikMcsd-5JG5Vhn650AQWVWWLd2DzpDmiwfu1J7UgpIu4z708uu/exec";
     const html5QrCode = new Html5Qrcode("reader");
+    let checkInData = {}; // 紀錄各地點的打卡資訊
 
-    // 記錄 8 個按鈕的打卡資料
-    const checkInData = {};
-
-    async function startScan(buttonId) {
+    async function startScan(location) {
       if (html5QrCode._isScanning) {
-        await html5QrCode.stop();
+        await html5QrCode.stop().catch(err => console.error("停止掃描錯誤:", err));
       }
 
       html5QrCode.start(
         { facingMode: "environment" },
         { fps: 10, qrbox: { width: 250, height: 250 } },
         qrCodeMessage => {
-          document.getElementById("result").innerText = `掃描結果: ${qrCodeMessage}`;
-
-          // 記錄該按鈕的打卡資訊
           const now = new Date().toLocaleString();
-          checkInData[buttonId] = {
-            time: now,
-            qrData: qrCodeMessage,
-            location: `地點 ${buttonId}` // 你可以改成真實地點
-          };
+          checkInData[location] = { time: now, qrData: qrCodeMessage, location: location };
 
-          alert(`打卡點 ${buttonId} 已記錄！`);
+          document.getElementById("log-" + location).innerText = `${now}\nQR內容: ${qrCodeMessage}`;
 
-          // 停止掃描（避免錯誤）
-          html5QrCode.stop().catch(err => console.error("Stop failed: ", err));
+          alert(`${location} 打卡完成！`);
+
+          html5QrCode.stop().catch(err => console.error("停止掃描失敗:", err));
         },
         errorMessage => {
-          console.log("QR error: ", errorMessage);
+          console.log("掃描中錯誤: ", errorMessage);
         }
-      ).catch(err => console.error("Start failed: ", err));
+      ).catch(err => console.error("啟動相機失敗:", err));
     }
 
     function submitAll() {
       if (Object.keys(checkInData).length === 0) {
-        alert("尚未有打卡資料！");
+        alert("尚未有任何打卡資料！");
         return;
       }
-
-      // 將多筆資料打包成 JSON
-      const payload = JSON.stringify(checkInData);
 
       fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: payload
+        body: JSON.stringify(checkInData)
       })
       .then(res => res.text())
       .then(response => {
-        console.log("送出成功:", response);
-        alert("所有打卡資料已送出！");
+        console.log("上傳成功:", response);
+        alert("所有打卡資料已成功上傳！");
       })
       .catch(err => {
-        console.error("送出失敗:", err);
-        alert("送出失敗，請稍後再試！");
+        console.error("上傳失敗:", err);
+        alert("上傳失敗，請稍後再試！");
       });
     }
   </script>
