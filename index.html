@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8">
-  <title>QR Code 打卡系統1851</title>
+  <title>QR Code 打卡系統1901</title>
   <script src="https://unpkg.com/html5-qrcode"></script>
   <style>
     body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
@@ -15,29 +15,32 @@
 
   <div>
     <button onclick="startScan('A棟B2')">A棟B2</button>
-    <div id="record-A棟B2" class="record"></div>
+    <div id="record-A棟B2" class="record">尚未打卡</div>
 
     <button onclick="startScan('A棟9F')">A棟9F</button>
-    <div id="record-A棟9F" class="record"></div>
+    <div id="record-A棟9F" class="record">尚未打卡</div>
 
     <button onclick="startScan('B棟B2')">B棟B2</button>
-    <div id="record-B棟B2" class="record"></div>
+    <div id="record-B棟B2" class="record">尚未打卡</div>
 
     <button onclick="startScan('B棟9F')">B棟9F</button>
-    <div id="record-B棟9F" class="record"></div>
+    <div id="record-B棟9F" class="record">尚未打卡</div>
   </div>
+
+  <button onclick="submitAll()">上傳資料</button>
 
   <div id="reader" style="width:300px; margin:auto; display:none;"></div>
 
   <!-- 隱藏表單提交 -->
-  <form id="qrForm" method="POST" action="https://script.google.com/macros/s/AKfycbyi8XcNscGpsqoJtMJUZ7k0qYCxMm1QgOcN3KZFD2bJHhZ_uap6VG6mN81F/exec" target="hidden_iframe">
-    <input type="hidden" name="location" id="location">
-    <input type="hidden" name="qrCode" id="qrCode">
+  <form id="qrForm" method="POST" action="https://script.google.com/macros/s/AKfycbyi8XcNscGpsqoJtMJUZ7k0qYCxMm1QgOcN3KZFD2bJHhZ_uap6VG6mN81F-Bu6bL9_/exec" target="hidden_iframe">
+    <input type="hidden" name="records" id="records">
   </form>
   <iframe name="hidden_iframe" style="display:none;"></iframe>
 
   <script>
     const qrScanner = new Html5Qrcode("reader");
+    const locations = ['A棟B2','A棟9F','B棟B2','B棟9F'];
+    let records = {}; // 暫存每個位置的最新掃描紀錄
 
     async function startScan(location) {
       document.getElementById("reader").style.display = "block";
@@ -48,11 +51,13 @@
           { fps: 10, qrbox: 250 },
           (decodedText) => {
             const now = new Date().toLocaleString();
+
+            // 更新暫存紀錄
+            records[location] = { location, qrCode: decodedText, time: now };
+
+            // 更新前端顯示
             document.getElementById("record-" + location).innerText =
               `${now} - ${decodedText}`;
-
-            // 提交到 Apps Script Web App
-            submitRecord(location, decodedText);
 
             stopScan();
           }
@@ -71,10 +76,26 @@
       }
     }
 
-    function submitRecord(location, qrCode) {
-      document.getElementById("location").value = location;
-      document.getElementById("qrCode").value = qrCode;
+    function submitAll() {
+      const dataToSend = Object.values(records);
+      if (dataToSend.length === 0) {
+        alert("尚未有任何打卡資料");
+        return;
+      }
+
+      // 將暫存資料轉成 JSON 放入隱藏表單
+      document.getElementById("records").value = JSON.stringify({ records: dataToSend });
+
+      // 提交表單到 Apps Script Web App
       document.getElementById("qrForm").submit();
+
+      // 清空暫存與前端顯示
+      records = {};
+      locations.forEach(loc => {
+        document.getElementById("record-" + loc).innerText = "尚未打卡";
+      });
+
+      alert("資料已送出！");
     }
   </script>
 </body>
