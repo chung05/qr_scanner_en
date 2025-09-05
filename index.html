@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8">
-  <title>QR Code 打卡系統_1941</title>
+  <title>QR Code 打卡系統1948</title>
   <script src="https://unpkg.com/html5-qrcode"></script>
   <style>
     body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
@@ -40,7 +40,7 @@
   <script>
     const qrScanner = new Html5Qrcode("reader");
     const locations = ['A棟B2','A棟9F','B棟B2','B棟9F'];
-    let records = {}; // 暫存每個位置最新紀錄
+    let records = {}; // 暫存每個位置的最新掃描紀錄
 
     async function startScan(location) {
       document.getElementById("reader").style.display = "block";
@@ -50,12 +50,12 @@
           { facingMode: "environment" },
           { fps: 10, qrbox: 250 },
           (decodedText) => {
-            const now = new Date().toISOString(); // 儲存 ISO 格式時間
+            const now = new Date().toISOString(); // ISO 格式時間，Google Sheet 可讀
 
-            // 更新暫存
+            // 更新暫存紀錄
             records[location] = { location, qrCode: decodedText, time: now };
 
-            // 更新畫面
+            // 更新前端顯示
             document.getElementById("record-" + location).innerText =
               `${new Date(now).toLocaleString()} - ${decodedText}`;
 
@@ -86,7 +86,7 @@
       // 將暫存資料轉成 JSON 放入隱藏表單
       document.getElementById("records").value = JSON.stringify({ records: dataToSend });
 
-      // 提交表單
+      // 提交表單到 Apps Script Web App
       document.getElementById("qrForm").submit();
 
       // 清空暫存與前端顯示
