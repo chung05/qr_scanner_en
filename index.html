@@ -2,29 +2,36 @@
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8">
-  <title>QR Code 打卡系統2016</title>
+  <title>QR Code 打卡系統 - 單行模式</title>
   <script src="https://unpkg.com/html5-qrcode"></script>
   <style>
     body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
-    button { margin: 10px; padding: 10px 20px; font-size: 16px; }
-    .record { margin: 5px; font-size: 14px; color: green; }
+    .container { display: flex; justify-content: center; gap: 20px; margin-bottom: 20px; }
+    .location-box { display: flex; flex-direction: column; align-items: center; }
+    button { margin: 5px; padding: 10px 20px; font-size: 16px; }
+    .record { margin-top: 5px; font-size: 14px; color: green; min-width: 150px; text-align: center; }
   </style>
 </head>
 <body>
   <h2>QR Code 打卡系統</h2>
 
-  <div>
-    <button onclick="startScan('A棟B2')">A棟B2</button>
-    <div id="record-A棟B2" class="record">尚未打卡</div>
-
-    <button onclick="startScan('A棟9F')">A棟9F</button>
-    <div id="record-A棟9F" class="record">尚未打卡</div>
-
-    <button onclick="startScan('B棟B2')">B棟B2</button>
-    <div id="record-B棟B2" class="record">尚未打卡</div>
-
-    <button onclick="startScan('B棟9F')">B棟9F</button>
-    <div id="record-B棟9F" class="record">尚未打卡</div>
+  <div class="container">
+    <div class="location-box">
+      <button onclick="startScan('A棟B2')">A棟B2</button>
+      <div id="record-A棟B2" class="record">尚未打卡</div>
+    </div>
+    <div class="location-box">
+      <button onclick="startScan('A棟9F')">A棟9F</button>
+      <div id="record-A棟9F" class="record">尚未打卡</div>
+    </div>
+    <div class="location-box">
+      <button onclick="startScan('B棟B2')">B棟B2</button>
+      <div id="record-B棟B2" class="record">尚未打卡</div>
+    </div>
+    <div class="location-box">
+      <button onclick="startScan('B棟9F')">B棟9F</button>
+      <div id="record-B棟9F" class="record">尚未打卡</div>
+    </div>
   </div>
 
   <button onclick="submitAll()">上傳資料</button>
@@ -40,7 +47,7 @@
   <script>
     const qrScanner = new Html5Qrcode("reader");
     const locations = ['A棟B2','A棟9F','B棟B2','B棟9F'];
-    let records = {}; // 暫存每個位置的最新掃描紀錄
+    let records = { time: "" }; // 儲存單行資料
 
     async function startScan(location) {
       document.getElementById("reader").style.display = "block";
@@ -50,14 +57,19 @@
           { facingMode: "environment" },
           { fps: 10, qrbox: 250 },
           (decodedText) => {
-            const now = new Date().toISOString(); // ISO 格式時間，Google Sheet 可讀
+            const now = new Date().toISOString();
 
-            // 更新暫存紀錄
-            records[location] = { location, qrCode: decodedText, time: now };
+            // 如果是第一次掃描，就記錄時間
+            if (!records.time) {
+              records.time = now;
+            }
+
+            // 存入該地點的 QR 碼
+            records[location] = decodedText;
 
             // 更新前端顯示
             document.getElementById("record-" + location).innerText =
-              `${new Date(now).toLocaleString()} - ${decodedText}`;
+              `${new Date(now).toLocaleTimeString()} - ${decodedText}`;
 
             stopScan();
           }
@@ -77,20 +89,17 @@
     }
 
     function submitAll() {
-      const dataToSend = Object.values(records);
-      if (dataToSend.length === 0) {
+      if (!records.time) {
         alert("尚未有任何打卡資料");
         return;
       }
 
-      // 將暫存資料轉成 JSON，再 encodeURIComponent 處理
-      document.getElementById("records").value = encodeURIComponent(JSON.stringify({ records: dataToSend }));
-
-      // 提交表單到 Apps Script Web App
+      // 傳送單行紀錄
+      document.getElementById("records").value = encodeURIComponent(JSON.stringify(records));
       document.getElementById("qrForm").submit();
 
-      // 清空暫存與前端顯示
-      records = {};
+      // 重置
+      records = { time: "" };
       locations.forEach(loc => {
         document.getElementById("record-" + loc).innerText = "尚未打卡";
       });
@@ -100,5 +109,3 @@
   </script>
 </body>
 </html>
-
-
