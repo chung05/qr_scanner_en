@@ -2,43 +2,92 @@
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8">
-  <title>QR Code 打卡系統 - 單行模式</title>
+  <title>QR Code 打卡系統2016 - 單行模式</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
   <script src="https://unpkg.com/html5-qrcode"></script>
   <style>
-    body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
-    .container { display: flex; justify-content: center; gap: 20px; margin-bottom: 20px; }
-    .location-box { display: flex; flex-direction: column; align-items: center; }
-    button { margin: 5px; padding: 10px 20px; font-size: 16px; }
-    .record { margin-top: 5px; font-size: 14px; color: green; min-width: 150px; text-align: center; }
+    body { font-family: Arial, sans-serif; text-align: center; padding: 10px; margin:0; }
+    h2 { font-size: 20px; margin: 8px 0 14px; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr); /* 兩欄 */
+      gap: 10px;
+      padding: 0 10px;
+    }
+    .location-box {
+      background: #fff;
+      border-radius: 8px;
+      padding: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+    button.scan-btn {
+      width: 100%;
+      padding: 12px;
+      font-size: 16px;
+      border: none;
+      border-radius: 6px;
+      background-color: #1976D2;
+      color: white;
+    }
+    .record {
+      margin-top:8px;
+      font-size: 14px;
+      color: #0b6623;
+      min-height: 36px;
+      word-break: break-all;
+    }
+    .submit-btn {
+      margin: 18px auto;
+      display:block;
+      width: 90%;
+      max-width: 360px;
+      padding: 14px;
+      font-size: 18px;
+      border-radius: 8px;
+      border: none;
+      background: #2E7D32;
+      color: white;
+    }
+    #reader { width: 100%; max-width: 420px; margin: 12px auto; display:none; }
+    /* 小螢幕微調 */
+    @media (max-width:420px) {
+      h2 { font-size: 18px; }
+      .record { font-size: 13px; }
+      button.scan-btn { font-size: 15px; padding: 10px; }
+    }
   </style>
 </head>
 <body>
   <h2>QR Code 打卡系統</h2>
 
-  <div class="container">
+  <div class="grid">
     <div class="location-box">
-      <button onclick="startScan('A棟B2')">A棟B2</button>
+      <button class="scan-btn" onclick="startScan('A棟B2')">A棟B2</button>
       <div id="record-A棟B2" class="record">尚未打卡</div>
     </div>
+
     <div class="location-box">
-      <button onclick="startScan('A棟9F')">A棟9F</button>
+      <button class="scan-btn" onclick="startScan('A棟9F')">A棟9F</button>
       <div id="record-A棟9F" class="record">尚未打卡</div>
     </div>
+
     <div class="location-box">
-      <button onclick="startScan('B棟B2')">B棟B2</button>
+      <button class="scan-btn" onclick="startScan('B棟B2')">B棟B2</button>
       <div id="record-B棟B2" class="record">尚未打卡</div>
     </div>
+
     <div class="location-box">
-      <button onclick="startScan('B棟9F')">B棟9F</button>
+      <button class="scan-btn" onclick="startScan('B棟9F')">B棟9F</button>
       <div id="record-B棟9F" class="record">尚未打卡</div>
     </div>
   </div>
 
-  <button onclick="submitAll()">上傳資料</button>
+  <button class="submit-btn" onclick="submitAll()">送出資料</button>
 
-  <div id="reader" style="width:300px; margin:auto; display:none;"></div>
+  <!-- QR Scanner 視窗 -->
+  <div id="reader"></div>
 
-  <!-- 隱藏表單提交 -->
+  <!-- 隱藏表單（保留你原本 action 不做變更） -->
   <form id="qrForm" method="POST" action="https://script.google.com/macros/s/AKfycbzZ7VxG8CCdHkZbB5yZa2V8asz2GUcBIxzRsqYhQGATfiZ8N-XDZyAaIVygQPOVzhyb/exec" target="hidden_iframe">
     <input type="hidden" name="records" id="records">
   </form>
@@ -47,59 +96,83 @@
   <script>
     const qrScanner = new Html5Qrcode("reader");
     const locations = ['A棟B2','A棟9F','B棟B2','B棟9F'];
-    let records = { time: "" }; // 儲存單行資料
+    // 每個位置記錄 { time: ISOstring, qrCode: string }
+    let records = {};
+
+    // 小工具：把 ISO 時間轉成 YYYY/MM/DD HH:MM:SS（台北時區）
+    function formatLocal(tsIso) {
+      if (!tsIso) return "";
+      const d = new Date(tsIso);
+      const pad = n => n.toString().padStart(2,'0');
+      return `${d.getFullYear()}/${pad(d.getMonth()+1)}/${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+    }
 
     async function startScan(location) {
+      // 顯示掃描視窗
       document.getElementById("reader").style.display = "block";
 
       try {
+        // 若 scanner 正在運行，先停止（安全處理）
+        try {
+          const st = qrScanner.getState && qrScanner.getState();
+          if (st === 2) await qrScanner.stop();
+        } catch(e){ /* ignore */ }
+
         await qrScanner.start(
           { facingMode: "environment" },
           { fps: 10, qrbox: 250 },
           (decodedText) => {
-            const now = new Date().toISOString();
+            const nowIso = new Date().toISOString();
 
-            // 如果是第一次掃描，就記錄時間
-            if (!records.time) {
-              records.time = now;
-            }
+            // 儲存時間與 QR
+            records[location] = { time: nowIso, qrCode: decodedText };
 
-            // 存入該地點的 QR 碼
-            records[location] = decodedText;
-
-            // 更新前端顯示
+            // 顯示：時間 + QR
             document.getElementById("record-" + location).innerText =
-              `${new Date(now).toLocaleTimeString()} - ${decodedText}`;
+              `${formatLocal(nowIso)}  |  ${decodedText}`;
 
-            stopScan();
+            // 停 scanner
+            qrScanner.stop().catch(()=>{});
+            document.getElementById("reader").style.display = "none";
+          },
+          (errorMessage) => {
+            // 掃描中錯誤（可忽略）
+            // console.log("scan:", errorMessage);
           }
         );
       } catch (err) {
         console.error("啟動掃描錯誤:", err);
-      }
-    }
-
-    async function stopScan() {
-      try {
-        await qrScanner.stop();
+        alert("啟動相機失敗，請確認瀏覽器允許使用相機或換成 Chrome。");
         document.getElementById("reader").style.display = "none";
-      } catch (err) {
-        console.error("停止掃描錯誤:", err);
       }
     }
 
     function submitAll() {
-      if (!records.time) {
+      // 檢查是否有任何打卡
+      const hasAny = Object.keys(records).length > 0;
+      if (!hasAny) {
         alert("尚未有任何打卡資料");
         return;
       }
 
-      // 傳送單行紀錄
-      document.getElementById("records").value = encodeURIComponent(JSON.stringify(records));
+      // build row: [上傳時間, A棟B2 (time|QR), A棟9F (time|QR), B棟B2, B棟9F]
+      const uploadTime = new Date().toISOString();
+      const row = [
+        formatLocal(uploadTime),
+        (records['A棟B2'] ? `${formatLocal(records['A棟B2'].time)} | ${records['A棟B2'].qrCode}` : ""),
+        (records['A棟9F'] ? `${formatLocal(records['A棟9F'].time)} | ${records['A棟9F'].qrCode}` : ""),
+        (records['B棟B2'] ? `${formatLocal(records['B棟B2'].time)} | ${records['B棟B2'].qrCode}` : ""),
+        (records['B棟9F'] ? `${formatLocal(records['B棟9F'].time)} | ${records['B棟9F'].qrCode}` : "")
+      ];
+
+      // 把 row 包成 JSON，encode 並放到隱藏欄位（你後端會用 decodeURIComponent 解析）
+      document.getElementById("records").value = encodeURIComponent(JSON.stringify({ row }));
+
+      // 提交到 Apps Script（既有 action，不變）
       document.getElementById("qrForm").submit();
 
-      // 重置
-      records = { time: "" };
+      // 清除前端
+      records = {};
       locations.forEach(loc => {
         document.getElementById("record-" + loc).innerText = "尚未打卡";
       });
