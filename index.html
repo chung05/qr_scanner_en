@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8">
-  <title>QR Code 打卡系統0911_1530</title>
+  <title>QR Code 打卡系統0911_1630</title>
   <meta name="viewport" content="width=device-width,initial-scale=1.0">
   <script src="https://unpkg.com/html5-qrcode"></script>
   <style>
@@ -148,7 +148,6 @@
     }
 
 function submitAll() {
-  // 把 records（以 location 為 key）轉成陣列，每項包含 time, location, qrCode
   const dataArray = Object.keys(records).map(loc => {
     const r = records[loc];
     if (!r) return null;
@@ -164,13 +163,12 @@ function submitAll() {
     return;
   }
 
-  // 把陣列包成 { records: [...] } 並 encode，再放到隱藏欄位（與你後端 decodeURIComponent 對應）
-  document.getElementById("records").value = encodeURIComponent(JSON.stringify({ records: dataArray }));
+  // 傳給後端的格式
+  document.getElementById("records").value =
+    encodeURIComponent(JSON.stringify({ records: dataArray }));
 
-  // 提交表單到 Apps Script（既有 action，不變）
   document.getElementById("qrForm").submit();
 
-  // 重置前端顯示與暫存
   records = {};
   locations.forEach(loc => {
     document.getElementById("record-" + loc).innerText = "尚未打卡";
@@ -178,10 +176,10 @@ function submitAll() {
 
   alert("資料已送出！");
 }
-
   </script>
 </body>
 </html>
+
 
 
 
