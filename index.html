@@ -147,39 +147,40 @@
       }
     }
 
-    function submitAll() {
-      // 檢查是否有任何打卡
-      const hasAny = Object.keys(records).length > 0;
-      if (!hasAny) {
-        alert("尚未有任何打卡資料");
-        return;
-      }
+function submitAll() {
+  // 把 records（以 location 為 key）轉成陣列，每項包含 time, location, qrCode
+  const dataArray = Object.keys(records).map(loc => {
+    const r = records[loc];
+    if (!r) return null;
+    return {
+      time: r.time,
+      location: loc,
+      qrCode: r.qrCode
+    };
+  }).filter(x => x !== null);
 
-      // build row: [上傳時間, A棟B2 (time|QR), A棟9F (time|QR), B棟B2, B棟9F]
-      const uploadTime = new Date().toISOString();
-      const row = [
-        formatLocal(uploadTime),
-        (records['A棟B2'] ? `${formatLocal(records['A棟B2'].time)} | ${records['A棟B2'].qrCode}` : ""),
-        (records['A棟9F'] ? `${formatLocal(records['A棟9F'].time)} | ${records['A棟9F'].qrCode}` : ""),
-        (records['B棟B2'] ? `${formatLocal(records['B棟B2'].time)} | ${records['B棟B2'].qrCode}` : ""),
-        (records['B棟9F'] ? `${formatLocal(records['B棟9F'].time)} | ${records['B棟9F'].qrCode}` : "")
-      ];
+  if (dataArray.length === 0) {
+    alert("尚未有任何打卡資料");
+    return;
+  }
 
-      // 把 row 包成 JSON，encode 並放到隱藏欄位（你後端會用 decodeURIComponent 解析）
-      document.getElementById("records").value = encodeURIComponent(JSON.stringify({ row }));
+  // 把陣列包成 { records: [...] } 並 encode，再放到隱藏欄位（與你後端 decodeURIComponent 對應）
+  document.getElementById("records").value = encodeURIComponent(JSON.stringify({ records: dataArray }));
 
-      // 提交到 Apps Script（既有 action，不變）
-      document.getElementById("qrForm").submit();
+  // 提交表單到 Apps Script（既有 action，不變）
+  document.getElementById("qrForm").submit();
 
-      // 清除前端
-      records = {};
-      locations.forEach(loc => {
-        document.getElementById("record-" + loc).innerText = "尚未打卡";
-      });
+  // 重置前端顯示與暫存
+  records = {};
+  locations.forEach(loc => {
+    document.getElementById("record-" + loc).innerText = "尚未打卡";
+  });
 
-      alert("資料已送出！");
-    }
+  alert("資料已送出！");
+}
+
   </script>
 </body>
 </html>
+
 
