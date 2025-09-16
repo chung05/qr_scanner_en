@@ -3,34 +3,117 @@
 <head>
   <meta charset="UTF-8">
   <title>QR Code 打卡系統</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <script src="https://unpkg.com/html5-qrcode"></script>
+  <style>
+    body { font-family: Arial, sans-serif; text-align: center; padding: 10px; margin:0; }
+    h2 { font-size: 20px; margin: 8px 0 14px; }
+    .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; padding: 0 10px; }
+    .location-box { background: #fff; border-radius: 8px; padding: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+    button.scan-btn { width: 100%; padding: 12px; font-size: 16px; border: none; border-radius: 6px; background-color: #1976D2; color: white; }
+    .record { margin-top:8px; font-size: 14px; color: #0b6623; min-height: 36px; word-break: break-all; }
+    .submit-btn { margin: 18px auto; display:block; width: 90%; max-width: 360px; padding: 14px; font-size: 18px; border-radius: 8px; border: none; background: #2E7D32; color: white; }
+    #reader { width: 100%; max-width: 420px; margin: 12px auto; display:none; }
+  </style>
 </head>
 <body>
-  <h1>打卡系統</h1>
-  <button id="send">送出打卡</button>
+  <h2>QR Code 打卡系統</h2>
+
+  <div class="grid">
+    <div class="location-box">
+      <button class="scan-btn" id="btn-A棟9F" onclick="startScan('A棟9F')">打卡</button>
+      <div id="record-A棟9F" class="record">尚未打卡</div>
+    </div>
+
+    <div class="location-box">
+      <button class="scan-btn" id="btn-A棟B2" onclick="startScan('A棟B2')">打卡</button>
+      <div id="record-A棟B2" class="record">尚未打卡</div>
+    </div>
+
+    <div class="location-box">
+      <button class="scan-btn" id="btn-B棟9F" onclick="startScan('B棟9F')">打卡</button>
+      <div id="record-B棟9F" class="record">尚未打卡</div>
+    </div>
+
+    <div class="location-box">
+      <button class="scan-btn" id="btn-B棟B2" onclick="startScan('B棟B2')">打卡</button>
+      <div id="record-B棟B2" class="record">尚未打卡</div>
+    </div>
+  </div>
+
+  <button class="submit-btn" onclick="submitAll()">送出</button>
+
+  <div id="reader"></div>
 
   <script>
-    // 模擬已經掃描到的多個打卡點
-    let records = [
-      { location: "A棟B2", time: new Date().toLocaleString(), qrCode: "QR123" },
-      { location: "B棟9F", time: new Date().toLocaleString(), qrCode: "QR999" }
-    ];
+    const qrScanner = new Html5Qrcode("reader");
+    const locations = ["A棟9F", "A棟B2", "B棟9F", "B棟B2"];
+    let records = {};
 
-    document.getElementById("send").addEventListener("click", async () => {
+    function formatLocal(tsIso) {
+      const d = new Date(tsIso);
+      const pad = n => n.toString().padStart(2,'0');
+      return `${d.getFullYear()}/${pad(d.getMonth()+1)}/${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+    }
+
+    async function startScan(location) {
+      document.getElementById("reader").style.display = "block";
       try {
-        let response = await fetch("你的Apps Script Web App網址", {
+        try {
+          const st = qrScanner.getState && qrScanner.getState();
+          if (st === 2) await qrScanner.stop();
+        } catch(e){}
+
+        await qrScanner.start(
+          { facingMode: "environment" },
+          { fps: 10, qrbox: 250 },
+          (decodedText) => {
+            const nowIso = new Date().toISOString();
+            records[location] = { time: nowIso, qrCode: decodedText };
+
+            document.getElementById("record-" + location).innerText =
+              `${formatLocal(nowIso)} | ${decodedText}`;
+            document.getElementById("btn-" + location).innerText = "再次打卡";
+
+            qrScanner.stop().catch(()=>{});
+            document.getElementById("reader").style.display = "none";
+          }
+        );
+      } catch (err) {
+        alert("啟動相機失敗，請確認瀏覽器允許相機。");
+        document.getElementById("reader").style.display = "none";
+      }
+    }
+
+    async function submitAll() {
+      const row = [];
+      row.push(new Date().toLocaleString("zh-TW", { timeZone: "Asia/Taipei" })); // 送出時間
+
+      locations.forEach(loc => {
+        if (records[loc]) {
+          row.push(formatLocal(records[loc].time) + "_" + records[loc].qrCode);
+        } else {
+          row.push("");
+        }
+      });
+
+      const payload = { row };
+
+      try {
+        const res = await fetch("https://script.google.com/macros/s/AKfycbzZ7VxG8CCdHkZbB5yZa2V8asz2GUcBIxzRsqYhQGATfiZ8N-XDZyAaIVygQPOVzhyb/exec", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ records: records })
+          body: JSON.stringify(payload),
+          headers: { "Content-Type": "application/json" }
         });
 
-        let result = await response.json();
-        console.log("回應：", result);
-        alert("送出成功！");
+        const text = await res.text();
+        console.log("回應：", text);
+        alert("資料已送出！");
       } catch (err) {
-        console.error("送出錯誤：", err);
-        alert("送出失敗");
+        console.error(err);
+        alert("送出失敗，請稍後再試。");
       }
-    });
+    }
   </script>
 </body>
 </html>
