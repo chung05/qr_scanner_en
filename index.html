@@ -8,11 +8,46 @@
   <style>
     body { font-family: Arial, sans-serif; text-align: center; padding: 10px; margin:0; }
     h2 { font-size: 20px; margin: 8px 0 14px; }
-    .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; padding: 0 10px; }
-    .location-box { background: #fff; border-radius: 8px; padding: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
-    button.scan-btn { width: 100%; padding: 12px; font-size: 16px; border: none; border-radius: 6px; background-color: #1976D2; color: white; }
-    .record { margin-top:8px; font-size: 14px; color: #0b6623; min-height: 36px; word-break: break-all; }
-    .submit-btn { margin: 18px auto; display:block; width: 90%; max-width: 360px; padding: 14px; font-size: 18px; border-radius: 8px; border: none; background: #2E7D32; color: white; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      padding: 0 10px;
+    }
+    .location-box {
+      background: #fff;
+      border-radius: 8px;
+      padding: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+    button.scan-btn {
+      width: 100%;
+      padding: 12px;
+      font-size: 16px;
+      border: none;
+      border-radius: 6px;
+      background-color: #1976D2;
+      color: white;
+    }
+    .record {
+      margin-top:8px;
+      font-size: 14px;
+      color: #0b6623;
+      min-height: 36px;
+      word-break: break-all;
+    }
+    .submit-btn {
+      margin: 18px auto;
+      display:block;
+      width: 90%;
+      max-width: 360px;
+      padding: 14px;
+      font-size: 18px;
+      border-radius: 8px;
+      border: none;
+      background: #2E7D32;
+      color: white;
+    }
     #reader { width: 100%; max-width: 420px; margin: 12px auto; display:none; }
   </style>
 </head>
@@ -21,36 +56,46 @@
 
   <div class="grid">
     <div class="location-box">
-      <button class="scan-btn" id="btn-A棟9F" onclick="startScan('A棟9F')">打卡</button>
+      <button class="scan-btn" onclick="startScan('A棟9F')">打卡</button>
       <div id="record-A棟9F" class="record">尚未打卡</div>
     </div>
 
     <div class="location-box">
-      <button class="scan-btn" id="btn-A棟B2" onclick="startScan('A棟B2')">打卡</button>
+      <button class="scan-btn" onclick="startScan('A棟B2')">打卡</button>
       <div id="record-A棟B2" class="record">尚未打卡</div>
     </div>
 
     <div class="location-box">
-      <button class="scan-btn" id="btn-B棟9F" onclick="startScan('B棟9F')">打卡</button>
+      <button class="scan-btn" onclick="startScan('B棟9F')">打卡</button>
       <div id="record-B棟9F" class="record">尚未打卡</div>
     </div>
 
     <div class="location-box">
-      <button class="scan-btn" id="btn-B棟B2" onclick="startScan('B棟B2')">打卡</button>
+      <button class="scan-btn" onclick="startScan('B棟B2')">打卡</button>
       <div id="record-B棟B2" class="record">尚未打卡</div>
     </div>
   </div>
 
-  <button class="submit-btn" onclick="submitAll()">送出</button>
+  <button class="submit-btn" onclick="submitAll()">送出資料</button>
 
+  <!-- 掃描器 -->
   <div id="reader"></div>
+
+  <!-- 隱藏表單 -->
+  <form id="qrForm" method="POST" 
+        action="https://script.google.com/macros/s/AKfycbzZ7VxG8CCdHkZbB5yZa2V8asz2GUcBIxzRsqYhQGATfiZ8N-XDZyAaIVygQPOVzhyb/exec" 
+        target="hidden_iframe">
+    <input type="hidden" name="records" id="records">
+  </form>
+  <iframe name="hidden_iframe" style="display:none;"></iframe>
 
   <script>
     const qrScanner = new Html5Qrcode("reader");
-    const locations = ["A棟9F", "A棟B2", "B棟9F", "B棟B2"];
+    const locations = ['A棟9F','A棟B2','B棟9F','B棟B2'];
     let records = {};
 
     function formatLocal(tsIso) {
+      if (!tsIso) return "";
       const d = new Date(tsIso);
       const pad = n => n.toString().padStart(2,'0');
       return `${d.getFullYear()}/${pad(d.getMonth()+1)}/${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
@@ -58,6 +103,7 @@
 
     async function startScan(location) {
       document.getElementById("reader").style.display = "block";
+
       try {
         try {
           const st = qrScanner.getState && qrScanner.getState();
@@ -71,48 +117,49 @@
             const nowIso = new Date().toISOString();
             records[location] = { time: nowIso, qrCode: decodedText };
 
+            // 更新顯示
             document.getElementById("record-" + location).innerText =
               `${formatLocal(nowIso)} | ${decodedText}`;
-            document.getElementById("btn-" + location).innerText = "再次打卡";
+            document.querySelector(`button[onclick="startScan('${location}')"]`).innerText = "再次打卡";
 
             qrScanner.stop().catch(()=>{});
             document.getElementById("reader").style.display = "none";
           }
         );
       } catch (err) {
-        alert("啟動相機失敗，請確認瀏覽器允許相機。");
+        alert("啟動相機失敗，請檢查瀏覽器權限");
         document.getElementById("reader").style.display = "none";
       }
     }
 
-    async function submitAll() {
-      const row = [];
-      row.push(new Date().toLocaleString("zh-TW", { timeZone: "Asia/Taipei" })); // 送出時間
+    function submitAll() {
+      if (Object.keys(records).length === 0) {
+        alert("尚未有任何打卡資料");
+        return;
+      }
+
+      const uploadTime = new Date().toISOString();
+      let row = [formatLocal(uploadTime)];
 
       locations.forEach(loc => {
         if (records[loc]) {
-          row.push(formatLocal(records[loc].time) + "_" + records[loc].qrCode);
+          row.push(`${formatLocal(records[loc].time)}_${records[loc].qrCode}`);
         } else {
           row.push("");
         }
       });
 
-      const payload = { row };
+      document.getElementById("records").value = encodeURIComponent(JSON.stringify({ row }));
+      document.getElementById("qrForm").submit();
 
-      try {
-        const res = await fetch("https://script.google.com/macros/s/AKfycbzZ7VxG8CCdHkZbB5yZa2V8asz2GUcBIxzRsqYhQGATfiZ8N-XDZyAaIVygQPOVzhyb/exec", {
-          method: "POST",
-          body: JSON.stringify(payload),
-          headers: { "Content-Type": "application/json" }
-        });
+      // reset
+      records = {};
+      locations.forEach(loc => {
+        document.getElementById("record-" + loc).innerText = "尚未打卡";
+        document.querySelector(`button[onclick="startScan('${loc}')"]`).innerText = "打卡";
+      });
 
-        const text = await res.text();
-        console.log("回應：", text);
-        alert("資料已送出！");
-      } catch (err) {
-        console.error(err);
-        alert("送出失敗，請稍後再試。");
-      }
+      alert("資料已送出！");
     }
   </script>
 </body>
